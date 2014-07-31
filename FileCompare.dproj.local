@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BorlandProject>
+	<Transactions>
+    <Transaction>1899-12-30 00:00:00.000.647,C:\Prog\XE2\Unit1.pas=C:\Prog\FileCompare\FileCompareUnit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.274,=C:\Prog\XE2\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.966,C:\Prog\XE2\Project1.dproj=C:\Prog\FileCompare\FileCompare.dproj</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.184,C:\Prog\FileCompare\TT1Unit1.pas=</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.477,C:\Prog\FileCompare\Unit1.pas=C:\Prog\FileCompare\TT1Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.257,=C:\Prog\FileCompare\Unit1.pas</Transaction>
+    <Transaction>1899-12-30 00:00:00.000.647,C:\Prog\XE2\Unit1.dfm=C:\Prog\FileCompare\FileCompareUnit1.dfm</Transaction>
+  </Transactions>
+</BorlandProject>

@@ -1,0 +1,91 @@
+unit TT1Unit1;
+
+interface
+
+uses
+  System.Classes, jpeg;
+
+
+type
+  FileData = record
+    Name : string;
+    Size : int64;
+    CheckSum : array[0..15] of Byte;
+    Snagged : boolean;
+  end;
+
+  TT1 = class(TThread)
+  private
+    procedure UpdateProgress;
+    { Private declarations }
+  protected
+    procedure Execute; override;
+  public
+    CallBackCaption : Tcaption;
+    CallBackMemo : TMemo;
+    Data : array of FileData;
+  end;
+
+implementation
+
+{
+  Important: Methods and properties of objects in visual components can only be
+  used in a method called using Synchronize, for example,
+
+      Synchronize(UpdateCaption);  
+
+  and UpdateCaption could look like,
+
+    procedure TT1.UpdateCaption;
+    begin
+      Form1.Caption := 'Updated in a thread';
+    end; 
+    
+    or 
+    
+    Synchronize( 
+      procedure 
+      begin
+        Form1.Caption := 'Updated in thread via an anonymous method' 
+      end
+      )
+    );
+    
+  where an anonymous method is passed.
+  
+  Similarly, the developer can call the Queue method with similar parameters as 
+  above, instead passing another TThread class as the first parameter, putting
+  the calling thread in a queue with the other thread.
+    
+}
+
+{ TT1 }
+
+procedure TT1.Execute;
+begin
+  { Place thread code here }
+    var jpg : TJPEGImage;
+l1, unreadables, found : integer;
+begin
+
+  unreadables := 0;
+  found := 0;
+  jpg  := tjpegimage.create;
+
+  for l1 := 0 to length(Files)-1 do if uppercase(ExtractFileExt(Files[l1].Name)) = '.JPG' then begin
+    inc(found);
+    try
+      JPG.LoadFromFile(Files[l1].Name);
+    except
+      memo1.Lines.Add(Files[l1].Name + ' [Unreadable]');
+      inc(unreadables);
+    end;
+  end;
+
+
+  memo1.Lines.Add(inttostr(unreadables) + ' Unreadable JPEGs out of '+inttostr(found)+' found.');
+  jpg.free;
+
+end;
+
+end.

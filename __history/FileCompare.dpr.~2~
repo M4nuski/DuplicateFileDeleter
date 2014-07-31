@@ -1,0 +1,15 @@
+program FileCompare;
+
+uses
+  Vcl.Forms,
+  FileCompareUnit1 in 'FileCompareUnit1.pas' {Form1},
+  TT1Unit1 in 'TT1Unit1.pas';
+
+{$R *.res}
+
+begin
+  Application.Initialize;
+  Application.MainFormOnTaskbar := True;
+  Application.CreateForm(TForm1, Form1);
+  Application.Run;
+end.

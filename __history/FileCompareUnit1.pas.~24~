@@ -1,0 +1,247 @@
+unit FileCompareUnit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, JPEG, Vcl.filectrl, math;
+
+type
+  TForm1 = class(TForm)
+    Memo1: TMemo;
+    Button1: TButton;  //scan
+    Button2: TButton;  //duplicates
+    Button3: TButton;  //0bytes
+    Button4: TButton;  //jpeg test
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
+    procedure Button5Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+  FileData = record
+    Name : string;
+    Size : int64;
+    CheckSum : int64;
+    Snagged : boolean;
+  end;
+
+
+  TT1 = class(TThread)
+  private
+    s : string;
+    progress : integer;
+    procedure memo1linesadd;
+    procedure unlockbuttons;
+    procedure UpdateCaption;
+  protected
+    procedure Execute; override;
+  public
+  end;
+
+var
+  Form1: TForm1;
+  Files : array of FileData;
+
+  bitsum : array[0..255] of byte;
+
+  P : array[0..7] of byte = (2, 3, 5, 7, 11, 13, 17, 19);
+
+procedure GetFiles(SearchDirectory: string);
+function TrimSlash(S : string): string;
+function checksum64(f : string):int64;
+
+implementation
+
+{$R *.dfm}
+
+
+function checksum64(f : string):int64;
+var fb : file of byte;
+l1, fpos, blocklen : cardinal;
+b : array[0..1023] of byte;
+begin
+result :=0;
+ if FileExists(f) then begin
+   assign(fb,f);
+   Reset(fb);
+   fpos := 0;
+
+   while (FileSize(fb)-fpos) > 0 do begin
+     blocklen := FileSize(fb)-fpos;
+     if blocklen > 1024 then blocklen := 1024;
+     BlockRead(fb,b,blocklen);
+     for l1 := 1 to blocklen do inc(result, bitsum[b[l1-1]]);
+     inc(fpos, blocklen);
+   end;
+
+   CloseFile(fb);
+ end;
+end;
+
+function TrimSlash(S : string): string;
+begin
+  result := copy(S,1,lastdelimiter('\',S)-1);
+end;
+
+procedure GetFiles(SearchDirectory: string);
+var SearchResults : TSearchRec;
+    SearchStatus : integer;
+begin
+  SearchStatus := FindFirst(SearchDirectory,faAnyFile,SearchResults);
+  while SearchStatus = 0 do begin
+    if (SearchResults.Name <> '.') and (SearchResults.Name <> '..') then begin
+
+    if ((SearchResults.Attr and faDirectory) = faDirectory) then GetFiles(TrimSlash(SearchDirectory)+'\'+SearchResults.Name+'\*') else begin
+        SetLength(Files, length(Files)+1);
+        Files[high(Files)].Name := TrimSlash(SearchDirectory)+'\'+SearchResults.Name;
+        Files[high(Files)].Size := SearchResults.Size;
+       end;
+    end;
+
+    SearchStatus := FindNext(SearchResults);
+  end;
+  FindClose(SearchResults);
+end;
+
+procedure TForm1.Button1Click(Sender: TObject);
+var r,s : string;
+begin
+  r := 'C:\';
+  s := 'C:\';
+  if SelectDirectory('Select Directory to scan for duplicates',r,s) then begin
+    Setlength(Files,0);
+    GetFiles(s);
+    memo1.Lines.Add(inttostr(Length(Files))+' Files Found.');
+  end;
+end;
+
+procedure TForm1.Button2Click(Sender: TObject);
+var l1,l2,Duplicates : integer;
+begin
+  Duplicates := 0;
+  Button1.Enabled := false;
+  Button2.Enabled := false;
+  Button3.Enabled := false;
+  Button4.Enabled := false;
+
+  if Length(Files) > 0 then
+    for l1 := 0 to Length(Files)-1 do for l2 := 0 to Length(Files)-1 do begin
+    if (l1 <> l2) and (Files[l1].Size = Files[l2].Size) and (Files[l1].Size > 0) and (files[l2].snagged = false) then begin
+
+      if Files[l1].CheckSum = 0 then Files[l1].CheckSum := checksum64(files[l1].name);
+      if Files[l2].CheckSum = 0 then Files[l2].CheckSum := checksum64(files[l2].name);
+      if Files[l1].CheckSum = Files[l2].CheckSum then begin
+        inc(duplicates);
+        Files[l1].Snagged := true; Files[l2].Snagged := true;
+        memo1.Lines.Add('Size['+inttostr(Files[l1].size)+'] E64['+inttohex(files[l2].CheckSum,8)+'] '+Files[l1].Name+' ### '+Files[l2].Name);
+      end;
+    end;
+    form1.Caption := 'File Comparator - Scanning ... '+inttostr(round(100*l1/Length(Files)))+'%';
+  end;
+
+  Memo1.lines.Add(inttostr(Duplicates)+' Duplicates.');
+  form1.Caption := 'File Comparator';
+  form1.Button1.Enabled := true;
+  form1.Button2.Enabled := true;
+  form1.Button3.Enabled := true;
+  form1.Button4.Enabled := true;
+end;
+
+procedure TForm1.Button3Click(Sender: TObject);
+var l1,Zeros : integer;
+begin
+  Zeros := 0;
+  if Length(Files) > 0 then for l1 := 0 to length(Files)-1 do if Files[l1].Size = 0 then begin
+      inc(Zeros);
+      memo1.Lines.Add('['+inttostr(Files[l1].size)+']'+Files[l1].Name);
+  end;
+
+  Memo1.lines.Add(inttostr(Zeros)+' Zero Byte Files.');
+end;
+
+procedure TForm1.Button4Click(Sender: TObject);
+begin
+  Button1.Enabled := false;
+  Button2.Enabled := false;
+  Button3.Enabled := false;
+  Button4.Enabled := false;
+
+  TT1.Create; //call async thread and return
+end;
+
+
+
+procedure TForm1.Button5Click(Sender: TObject);
+begin
+memo1.lines.add(inttostr(sizeof(FileData)*length(Files)));
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+var l1,l2,sum : byte;
+begin
+  for l1 := 0 to 255 do begin
+    bitsum[l1] := 0;
+    for l2 := 0 to 7 do if (l1 and round(power(2,l2))) > 0 then inc(bitsum[l1],p[l2]);
+  end;
+end;
+
+// TT1 JPEG tester thread
+
+
+procedure TT1.memo1linesadd;
+begin
+  form1.memo1.lines.add(s);
+end;
+
+ procedure TT1.UnLockButtons;
+begin
+  form1.Button1.Enabled := true;
+  form1.Button2.Enabled := true;
+  form1.Button3.Enabled := true;
+  form1.Button4.Enabled := true;
+
+  form1.Caption := 'File Comparator';
+end;
+
+procedure TT1.UpdateCaption;
+begin
+  form1.Caption := 'File Comparator - Scanning ... '+inttostr(progress)+'%';
+end;
+
+procedure TT1.Execute;
+var jpg : TJPEGImage;
+    l1, unreadables, found : integer;
+begin
+
+  unreadables := 0;
+  found := 0;
+  jpg  := tjpegimage.create;
+
+  for l1 := 0 to length(Files)-1 do if uppercase(ExtractFileExt(Files[l1].Name)) = '.JPG' then begin
+    inc(found);
+    if files[l1].Size <> 0 then
+    try
+      JPG.LoadFromFile(Files[l1].Name);
+    except
+      s :=  Files[l1].Name + ' [Unreadable]';
+      Synchronize(memo1linesadd);
+      inc(unreadables);
+    end;
+
+    progress := 100 * l1 div length(Files)-1;
+    Synchronize(UpdateCaption);
+  end;
+  s := inttostr(unreadables) + ' Unreadable JPEGs out of '+inttostr(found)+' found.';
+  Synchronize(memo1linesadd);
+  jpg.free;
+  Synchronize(unlockbuttons);
+end;
+
+end.
